@@ -36,7 +36,7 @@ if ENVIRONMENT == 'development':
     # ALLOWED_HOSTS = ['*', '127.0.0.1', 'localhost', 'choice-alien-saved.ngrok-free.app']
 else:
     DEBUG = False
-    ALLOWED_HOSTS = ['bmppd.dawnilab.org', 'www.bmppd.dawnilab.org', 'dawnilab.org', 'www.dawnilab.org', 'bmppd.org']
+    ALLOWED_HOSTS = ['bmppd.dawnilab.org', 'www.bmppd.dawnilab.org', 'dawnilab.org', 'www.dawnilab.org', 'bmppd.org', 'www.bmppd.org']
 
 
 # Application definition
