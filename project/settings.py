@@ -137,6 +137,7 @@ STATIC_ROOT = BASE_DIR/'staticfiles'
 
 if not DEBUG:
     MEDIA_ROOT = '/home/dawnofbi/bmppd.dawnilab.org/media'
+    STATIC_ROOT = '/home/dawnofbi/bmppd.dawnilab.org/staticfiles'
 else:
     MEDIA_ROOT = BASE_DIR / 'media'
 
