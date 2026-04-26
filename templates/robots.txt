@@ -26,3 +26,7 @@ User-agent: *
 Allow: /
 Disallow: /admin/
 
+# -----------------------------------------------------------
+# Sitemap
+# -----------------------------------------------------------
+Sitemap: https://bmppd.dawnilab.org/sitemap.xml
