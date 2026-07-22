@@ -8,43 +8,12 @@ from django.conf import settings
 from django.utils import timezone
 from .models import Phytochemical, PlantRequest
 
+from environ import Env
+env = Env()
+Env.read_env()
+
 def bmppd(request):
     return render(request, 'core/bmppd.html')
-
-# def bmppd_result(request):
-#     query = request.GET.get('q', '').strip()
-#     results = []
-
-#     if query:
-#         qs = Phytochemical.objects.filter(
-#             Q(plant__scientific_name__icontains=query) |
-#             Q(plant__common_names__name__icontains=query) |
-#             Q(compound_name__icontains=query) |
-#             Q(cid__icontains=query)
-#         ).select_related('plant').distinct()
-
-#         # Prepare a list of dicts for the template
-#         for p in qs:
-#             # Combine all common names for this plant
-#             common_names = p.plant.common_names.all()
-#             common_name = ", ".join([c.name for c in common_names]) if common_names else ''
-            
-#             results.append({
-#                 'plant_name': p.plant.scientific_name,
-#                 'common_name': common_name,
-#                 'compound_name': p.compound_name,
-#                 'cid': p.cid,
-#                 'reference': p.reference,
-#             })
-
-#     context = {
-#         'query': query,
-#         'results': results
-#     }
-#     return render(request, 'core/bmppd_result.html', context)
-
-
-
 
 def bmppd_result(request):
     query = request.GET.get('q', '').strip()
@@ -81,10 +50,6 @@ def bmppd_result(request):
                 'reference': p.reference,
             })
 
-        # Warn if results hit the limit
-        # if len(results) == max_results:
-        #     warnings.append(f"Showing only the first {max_results} results. Please refine your search to see more.")
-
     context = {
         'query': query,
         'results': results,
@@ -111,19 +76,6 @@ def about(request):
     return render(request, 'core/about.html')
 
 def acknowledgement(request):
-    # Aggregate compound counts in DB
-    # compounds = (
-    #     Phytochemical.objects
-    #     .values('compound_name')
-    #     .annotate(total_count=Count('id'))
-    #     .order_by('-total_count')
-    # )
-
-    # # Write to log file (UTF-8 safe)
-    # with open('phytochemical_log.txt', 'w', encoding='utf-8') as log_file:
-    #     for c in compounds:
-    #         log_file.write(f"{c['compound_name']}: {c['total_count']}\n")
-
     return render(
         request,
         'core/acknowledgement.html',
@@ -140,7 +92,7 @@ def request_plant(request):
 
         req = PlantRequest.objects.create(plant_name=plant_name, email=email)
 
-        # Send email notification to dawn.of.bioinformatics@gmail.com
+        NOTIFY_TO=env('NOTIFY_TO')
         try:
             send_mail(
                 subject=f"[BMPPD] New Plant Data Requested: {plant_name}",
@@ -150,7 +102,7 @@ def request_plant(request):
                         f"Requested At: {timezone.now().strftime('%Y-%m-%d %H:%M:%S UTC')}\n\n"
                         f"You can manage this request from the staff dashboard.",
                 from_email=getattr(settings, 'DEFAULT_FROM_EMAIL', 'noreply@bmppd.org'),
-                recipient_list=['dawn.of.bioinformatics@gmail.com'],
+                recipient_list=[NOTIFY_TO],
                 fail_silently=True,
             )
         except Exception:
