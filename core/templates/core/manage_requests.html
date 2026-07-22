@@ -1,0 +1,268 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<section class="container mt-5 mb-5">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="fw-bold text-dark mb-1"><i class="fa-solid fa-list-check text-success me-2"></i>Manage Plant Data Requests</h2>
+            <p class="text-muted mb-0">Review user requests for missing plant/phytochemical data and notify them once uploaded.</p>
+        </div>
+        <div>
+            <a href="{% url 'admin:core_plantrequest_changelist' %}" class="btn btn-outline-secondary btn-sm rounded-pill px-3 me-2" target="_blank">
+                <i class="fa-solid fa-gear me-1"></i>Django Admin
+            </a>
+            <a href="{% url 'bmppd' %}" class="btn btn-outline-success btn-sm rounded-pill px-3">
+                <i class="fa-solid fa-home me-1"></i>Back to Home
+            </a>
+        </div>
+    </div>
+
+    <div id="manageAlertContainer"></div>
+
+    <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+        <div class="card-body p-4">
+            <div class="table-responsive">
+                <table id="requestsTable" class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th scope="col">ID</th>
+                            <th scope="col">Requested Plant / Compound</th>
+                            <th scope="col">Requester Email</th>
+                            <th scope="col">Status</th>
+                            <th scope="col">Requested At</th>
+                            <th scope="col" class="text-end">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for req in requests %}
+                        <tr id="request-row-{{ req.id }}" data-id="{{ req.id }}" data-plant="{{ req.plant_name }}" data-email="{{ req.email }}" data-status="{{ req.status }}">
+                            <td class="fw-bold text-secondary">#{{ req.id }}</td>
+                            <td class="fw-semibold text-dark plant-name-cell">{{ req.plant_name }}</td>
+                            <td><a href="mailto:{{ req.email }}" class="text-decoration-none email-cell">{{ req.email }}</a></td>
+                            <td class="status-cell">
+                                {% if req.status == 'uploaded' %}
+                                    <span class="badge bg-success rounded-pill px-3 py-2"><i class="fa-solid fa-check-circle me-1"></i>Uploaded & Notified</span>
+                                {% else %}
+                                    <span class="badge bg-warning text-dark rounded-pill px-3 py-2"><i class="fa-solid fa-clock me-1"></i>Pending</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-muted small">{{ req.created_at|date:"M d, Y H:i" }}</td>
+                            <td class="text-end">
+                                <div class="btn-group" role="group">
+                                    <button type="button" class="btn btn-sm btn-outline-success btn-notify" data-id="{{ req.id }}" data-plant="{{ req.plant_name }}" title="Send Notification Mail">
+                                        <i class="fa-solid fa-envelope me-1"></i>Notify
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-outline-primary btn-edit" data-id="{{ req.id }}" title="Edit Request">
+                                        <i class="fa-solid fa-pen-to-square"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-outline-danger btn-delete" data-id="{{ req.id }}" data-plant="{{ req.plant_name }}" title="Delete Request">
+                                        <i class="fa-solid fa-trash"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="6" class="text-center py-5 text-muted">
+                                <i class="fa-solid fa-inbox fa-3x mb-3 d-block text-secondary"></i>
+                                No plant requests found yet.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Edit Request Modal -->
+<div class="modal fade" id="editRequestModal" tabindex="-1" aria-labelledby="editRequestModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-4 border-0 shadow">
+            <div class="modal-header border-bottom-0 pb-0">
+                <h5 class="modal-title fw-bold" id="editRequestModalLabel">
+                    <i class="fa-solid fa-pen-to-square text-primary me-2"></i>Edit Request #<span id="editRequestIdDisplay"></span>
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body pt-3">
+                <form id="editRequestForm">
+                    {% csrf_token %}
+                    <input type="hidden" id="editRequestId" name="req_id">
+                    <div class="mb-3">
+                        <label for="editPlantName" class="form-label fw-semibold">Plant Name / Compound</label>
+                        <input type="text" class="form-control rounded-3" id="editPlantName" name="plant_name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editEmail" class="form-label fw-semibold">Requester Email</label>
+                        <input type="email" class="form-control rounded-3" id="editEmail" name="email" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editStatus" class="form-label fw-semibold">Status</label>
+                        <select class="form-select rounded-3" id="editStatus" name="status">
+                            <option value="pending">Pending</option>
+                            <option value="uploaded">Uploaded / Notified</option>
+                        </select>
+                    </div>
+                    <div class="d-grid gap-2 mt-4">
+                        <button type="submit" class="btn btn-primary py-2 rounded-3 fw-semibold" id="submitEditBtn">
+                            <i class="fa-solid fa-check me-2"></i>Save Changes
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    $('#requestsTable').DataTable({
+        "order": [],
+        "pageLength": 25
+    });
+
+    // Notify Button Click
+    $(document).on('click', '.btn-notify', function() {
+        var id = $(this).data('id');
+        var plant = $(this).data('plant');
+        
+        if (!confirm('Are you sure you want to send an email notification to the requester of "' + plant + '" saying the data has been uploaded?')) {
+            return;
+        }
+
+        var $btn = $(this);
+        var originalHtml = $btn.html();
+        $btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>Sending...');
+
+        $.ajax({
+            url: "/manage-requests/" + id + "/notify/",
+            type: "POST",
+            data: {
+                'csrfmiddlewaretoken': '{{ csrf_token }}'
+            },
+            success: function(response) {
+                $('#manageAlertContainer').html('<div class="alert alert-success alert-dismissible fade show rounded-3 mb-4"><i class="fa-solid fa-check-circle me-2"></i>' + response.message + '<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button></div>');
+                
+                // Update badge and status attribute
+                var $row = $('#request-row-' + id);
+                $row.attr('data-status', 'uploaded');
+                $row.find('.status-cell').html('<span class="badge bg-success rounded-pill px-3 py-2"><i class="fa-solid fa-check-circle me-1"></i>Uploaded & Notified</span>');
+                $btn.prop('disabled', false).html(originalHtml);
+            },
+            error: function(xhr) {
+                var msg = "Error sending notification email.";
+                if (xhr.responseJSON && xhr.responseJSON.message) {
+                    msg = xhr.responseJSON.message;
+                }
+                $('#manageAlertContainer').html('<div class="alert alert-danger alert-dismissible fade show rounded-3 mb-4"><i class="fa-solid fa-exclamation-triangle me-2"></i>' + msg + '<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button></div>');
+                $btn.prop('disabled', false).html(originalHtml);
+            }
+        });
+    });
+
+    // Edit Button Click
+    $(document).on('click', '.btn-edit', function() {
+        var id = $(this).data('id');
+        var $row = $('#request-row-' + id);
+        var plant = $row.attr('data-plant');
+        var email = $row.attr('data-email');
+        var status = $row.attr('data-status');
+
+        $('#editRequestId').val(id);
+        $('#editRequestIdDisplay').text(id);
+        $('#editPlantName').val(plant);
+        $('#editEmail').val(email);
+        $('#editStatus').val(status);
+
+        var editModal = new bootstrap.Modal(document.getElementById('editRequestModal'));
+        editModal.show();
+    });
+
+    // Edit Form Submit
+    $('#editRequestForm').on('submit', function(e) {
+        e.preventDefault();
+        var id = $('#editRequestId').val();
+        var $btn = $('#submitEditBtn');
+        var originalHtml = $btn.html();
+        $btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>Saving...');
+
+        $.ajax({
+            url: "/manage-requests/" + id + "/edit/",
+            type: "POST",
+            data: $(this).serialize(),
+            success: function(response) {
+                var newPlant = $('#editPlantName').val().trim();
+                var newEmail = $('#editEmail').val().trim();
+                var newStatus = $('#editStatus').val();
+
+                var $row = $('#request-row-' + id);
+                $row.attr('data-plant', newPlant);
+                $row.attr('data-email', newEmail);
+                $row.attr('data-status', newStatus);
+
+                $row.find('.plant-name-cell').text(newPlant);
+                $row.find('.email-cell').text(newEmail).attr('href', 'mailto:' + newEmail);
+                if (newStatus === 'uploaded') {
+                    $row.find('.status-cell').html('<span class="badge bg-success rounded-pill px-3 py-2"><i class="fa-solid fa-check-circle me-1"></i>Uploaded & Notified</span>');
+                } else {
+                    $row.find('.status-cell').html('<span class="badge bg-warning text-dark rounded-pill px-3 py-2"><i class="fa-solid fa-clock me-1"></i>Pending</span>');
+                }
+
+                $('#manageAlertContainer').html('<div class="alert alert-success alert-dismissible fade show rounded-3 mb-4"><i class="fa-solid fa-check-circle me-2"></i>' + response.message + '<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button></div>');
+                $('#editRequestModal').modal('hide');
+                $btn.prop('disabled', false).html(originalHtml);
+            },
+            error: function(xhr) {
+                var msg = "Error updating request.";
+                if (xhr.responseJSON && xhr.responseJSON.message) {
+                    msg = xhr.responseJSON.message;
+                }
+                alert(msg);
+                $btn.prop('disabled', false).html(originalHtml);
+            }
+        });
+    });
+
+    // Delete Button Click
+    $(document).on('click', '.btn-delete', function() {
+        var id = $(this).data('id');
+        var plant = $(this).data('plant');
+        
+        if (!confirm('Are you sure you want to permanently delete the request for "' + plant + '"?')) {
+            return;
+        }
+
+        var $btn = $(this);
+        $btn.prop('disabled', true).html('<i class="fa-solid fa-spinner fa-spin"></i>');
+
+        $.ajax({
+            url: "/manage-requests/" + id + "/delete/",
+            type: "POST",
+            data: {
+                'csrfmiddlewaretoken': '{{ csrf_token }}'
+            },
+            success: function(response) {
+                $('#manageAlertContainer').html('<div class="alert alert-success alert-dismissible fade show rounded-3 mb-4"><i class="fa-solid fa-check-circle me-2"></i>' + response.message + '<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button></div>');
+                
+                // Remove row from DataTables or DOM
+                var table = $('#requestsTable').DataTable();
+                table.row($('#request-row-' + id)).remove().draw();
+            },
+            error: function(xhr) {
+                var msg = "Error deleting request.";
+                if (xhr.responseJSON && xhr.responseJSON.message) {
+                    msg = xhr.responseJSON.message;
+                }
+                $('#manageAlertContainer').html('<div class="alert alert-danger alert-dismissible fade show rounded-3 mb-4"><i class="fa-solid fa-exclamation-triangle me-2"></i>' + msg + '<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button></div>');
+                $btn.prop('disabled', false).html('<i class="fa-solid fa-trash"></i>');
+            }
+        });
+    });
+});
+</script>
+{% endblock extra_js %}

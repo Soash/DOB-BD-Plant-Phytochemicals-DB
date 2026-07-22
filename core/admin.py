@@ -1,5 +1,5 @@
-from django.contrib import admin
-from .models import Plant, CommonName, Phytochemical
+from django.contrib import admin, messages
+from .models import Plant, CommonName, Phytochemical, PlantRequest, CSVUpload
 from django.db.models import Count
 
 
@@ -64,9 +64,13 @@ class PhytochemicalAdmin(admin.ModelAdmin):
 
 
 
-# admin.py
-from django.contrib import admin, messages
-from .models import CSVUpload, Plant, CommonName, Phytochemical
+@admin.register(PlantRequest)
+class PlantRequestAdmin(admin.ModelAdmin):
+    list_display = ('plant_name', 'email', 'status', 'created_at', 'notified_at')
+    list_filter = ('status', 'created_at')
+    search_fields = ('plant_name', 'email')
+    readonly_fields = ('created_at',)
+
 
 @admin.register(CSVUpload)
 class CSVUploadAdmin(admin.ModelAdmin):

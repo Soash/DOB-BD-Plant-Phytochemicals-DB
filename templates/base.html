@@ -36,6 +36,9 @@
                     <li class="nav-item"><a class="nav-link px-3 text-uppercase" href="{% url 'about' %}">About Us</a></li>
                     <li class="nav-item"><a class="nav-link px-3 text-uppercase" href="{% url 'acknowledgement' %}">Acknowledgement</a></li>
                     <li class="nav-item"><a class="nav-link px-3 text-uppercase" href="https://forms.gle/xkNg4KjjMj7qKsC19">Feedback</a></li>
+                    {% if user.is_authenticated and user.is_staff %}
+                    <li class="nav-item"><a class="nav-link px-3 text-uppercase text-success fw-bold" href="{% url 'manage_requests' %}"><i class="fa-solid fa-list-check me-1"></i>Requests</a></li>
+                    {% endif %}
                 </ul>
             </div>
         </div>

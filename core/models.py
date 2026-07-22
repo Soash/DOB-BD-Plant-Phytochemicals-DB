@@ -34,10 +34,20 @@ class Phytochemical(models.Model):
 
 
 
-# models.py
-from django.db import models
-import csv
-from core.models import Plant, CommonName, Phytochemical
+class PlantRequest(models.Model):
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('uploaded', 'Uploaded/Notified'),
+    ]
+    plant_name = models.CharField(max_length=255)
+    email = models.EmailField()
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    created_at = models.DateTimeField(auto_now_add=True)
+    notified_at = models.DateTimeField(null=True, blank=True)
+
+    def __str__(self):
+        return f"{self.plant_name} ({self.email}) - {self.get_status_display()}"
+
 
 class CSVUpload(models.Model):
     file = models.FileField(upload_to='data/')
